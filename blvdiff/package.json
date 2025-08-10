@@ -20,7 +20,7 @@
         "blvflag.binaryPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to blvdiff binary (leave empty to use bundled binary or PATH)."
+          "description": ""
         }
       }
     }

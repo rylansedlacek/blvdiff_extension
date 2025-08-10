@@ -1,0 +1,32 @@
+{
+  "name": "blvflag-vscode",
+  "displayName": "BLVFLAG",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.70.0" },
+  "activationEvents": [
+    "onCommand:blvflag.run",
+    "onCommand:blvflag.diff"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "blvflag.run", "title": "BLVFLAG: Explain error" },
+      { "command": "blvflag.diff", "title": "BLVFLAG: Show diff vs history" }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "BLVFLAG",
+      "properties": {
+        "blvflag.binaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to blvflag binary (leave empty to use bundled binary or PATH)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo 'no build step for JS'",
+    "test": "echo 'no tests configured'"
+  }
+}

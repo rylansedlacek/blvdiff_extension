@@ -1,26 +1,26 @@
 {
-  "name": "blvflag-vscode",
-  "displayName": "BLVFLAG",
+  "name": "blvdiff-extension",
+  "displayName": "BLVDIFF",
   "version": "0.0.1",
   "engines": { "vscode": "^1.70.0" },
   "activationEvents": [
-    "onCommand:blvflag.run",
-    "onCommand:blvflag.diff"
+    "onCommand:blvdiff.explain",
+    "onCommand:blvdiff.diff"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "blvflag.run", "title": "BLVFLAG: Explain error" },
-      { "command": "blvflag.diff", "title": "BLVFLAG: Show diff vs history" }
+      { "command": "blvdiff.explain", "title": "BLVDIFF: Explain error" },
+      { "command": "blvdiff.diff", "title": "BLVDIFF: Show differential comparison" }
     ],
     "configuration": {
       "type": "object",
-      "title": "BLVFLAG",
+      "title": "BLVDIFF",
       "properties": {
         "blvflag.binaryPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to blvflag binary (leave empty to use bundled binary or PATH)."
+          "description": "Absolute path to blvdiff binary (leave empty to use bundled binary or PATH)."
         }
       }
     }

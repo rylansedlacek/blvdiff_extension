@@ -42,8 +42,9 @@ function activate(context) {
       return; 
     }
 
-    const oldContent = await readHistoricalContent(historyPath);
-    const newContent = editor.document.getText(); 
+    const oldContent = await readHistoricalContent(historyPath); // get the content from last file
+    const newContent = editor.document.getText();  // get the current files content
+
     const oldTmp = path.join(os.tmpdir(), `${scriptName}.history.old.py`); // grab old
     const newTmp = path.join(os.tmpdir(), `${scriptName}.current.py`); // grab new
 
@@ -82,7 +83,7 @@ async function resolveBinary(context) {
 function runBlvDiff(bin, args, output) {
   output.clear();
   output.show(true);
-  const proc = spawn(bin, args, { shell: false });
+  const proc = spawn(bin, args, { shell: false }); // call binary from bin
 
   proc.stdout.on('data', d => output.append(d.toString()));
   proc.stderr.on('data', d => output.append(d.toString()));

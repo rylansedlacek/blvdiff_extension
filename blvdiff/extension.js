@@ -1,7 +1,7 @@
 'use strict';
 
 // imports
-const vscode = require('vscode'); 
+const vscode = require('vscode');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -15,34 +15,33 @@ function activate(context) {
   const explainCmd = vscode.commands.registerCommand('blvdiff.explain', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      vscode.window.showInformationMessage('Open a Python script to use the explain flag.'); 
-      return; 
+      vscode.window.showInformationMessage('Open a Python script to use the explain flag.');
+      return;
     }
-    
+
     const filePath = editor.document.fileName;
-    const bin = await resolveBinary(context);
+    const bin = await getBinary(context);
     runBlvDiff(bin, ['--explain', filePath], output);
   });
-
 
   // diff flag
   const diffCmd = vscode.commands.registerCommand('blvdiff.diff', async () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) { 
-      vscode.window.showInformationMessage('Open a Python script to use the diff flag.'); 
-      return; 
+    if (!editor) {
+      vscode.window.showInformationMessage('Open a Python script to use the diff flag.');
+      return;
     }
 
     const filePath = editor.document.fileName;
     const scriptName = path.basename(filePath);
-    const historyPath = await findLatestHistory(scriptName); // call function
+    const historyPath = await findLatest(scriptName); // call function
 
-    if (!historyPath) { 
-      vscode.window.showInformationMessage(`No script history found for ${scriptName}.`); 
-      return; 
+    if (!historyPath) {
+      vscode.window.showInformationMessage(`No script history found for ${scriptName}.`);
+      return;
     }
 
-    const oldContent = await readHistoricalContent(historyPath); // get the content from last file
+    const oldContent = await getHistory(historyPath); // get the content from last file
     const newContent = editor.document.getText();  // get the current files content
 
     const oldTmp = path.join(os.tmpdir(), `${scriptName}.history.old.py`); // grab old
@@ -54,21 +53,31 @@ function activate(context) {
     const left = vscode.Uri.file(oldTmp); // old file
     const right = vscode.Uri.file(newTmp); // new file
 
-	// this is really neat utilizes the VSCODE diff screen instead of the blvdiff text based version
+    // this is really neat utilizes the VSCODE diff screen instead of the blvdiff text based version
     await vscode.commands.executeCommand('vscode.diff', left, right, `${scriptName}: Previous Version <-> Current Version`);
   });
 
-  context.subscriptions.push(explainCmd, diffCmd, output); 
+  context.subscriptions.push(explainCmd, diffCmd, output);
 }
 
 // get the binary for each platform
-async function resolveBinary(context) {
+async function getBinary(context) {
   const configured = vscode.workspace.getConfiguration('blvflag').get('binaryPath');
-  if (configured && configured.trim()) return configured.trim();
+
+  if (configured && configured.trim()) {
+    return configured.trim();
+  }
 
   const platform = process.platform;
   const arch = process.arch;
-  const binName = platform === 'win32' ? 'blvflag.exe' : 'blvflag'; // windows support for later
+
+  let binName;
+  if (platform === 'win32') {
+    binName = 'blvflag.exe';
+  } else {
+    binName = 'blvflag';
+  }
+
   const candidate = path.join(context.extensionPath, 'bin', `${platform}-${arch}`, binName);
 
   try {
@@ -81,6 +90,7 @@ async function resolveBinary(context) {
 
 // run the binary
 function runBlvDiff(bin, args, output) {
+
   output.clear();
   output.show(true);
   const proc = spawn(bin, args, { shell: false }); // call binary from bin
@@ -89,21 +99,22 @@ function runBlvDiff(bin, args, output) {
   proc.stderr.on('data', d => output.append(d.toString()));
 
   proc.on('error', err => vscode.window.showErrorMessage(`BLVDIFF error: ${err.message}`)); // error
-
-  // TODO remove
-  proc.on('close', code => output.appendLine(`\nBLVDIFF exited with code ${code}`)); // exit for debug
+  proc.on('close', code => output.appendLine(`\nExited with code ${code}`)); // exit for debug
 }
 
-async function findLatestHistory(scriptName) {
+async function findLatest(scriptName) {
   const baseName = scriptName.replace(/\.py$/, ''); // remove .py 
 
   // TODO, add support for non error diffing!
   const histDir = path.join(os.homedir(), 'blvflag', 'tool', 'history', 'err_history');
+
   try {
     const files = await fsp.readdir(histDir);
     const candidates = files.filter(f => f.startsWith(baseName + '_') && f.endsWith('.json'));
 
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) {
+      return null;
+    }
 
     candidates.sort((a, b) => {
       const aTime = fs.statSync(path.join(histDir, a)).mtime; // get the newest time first
@@ -112,21 +123,27 @@ async function findLatestHistory(scriptName) {
     });
 
     return path.join(histDir, candidates[0]);
+
   } catch {
     return null;
   }
 }
 
-
 // reads the file
-async function readHistoricalContent(historyFile) {
+async function getHistory(historyFile) {
   const raw = await fsp.readFile(historyFile, 'utf8');
   try {
     const obj = JSON.parse(raw);
 
-    if (typeof obj === 'string') return obj;
-    if (obj.content) return obj.content;
-    if (obj.text) return obj.text;
+    if (typeof obj === 'string') {
+      return obj;
+    }
+    if (obj.content) { 
+      return obj.content;
+    }
+    if (obj.text) {
+      return obj.text;
+    }
 
     return raw;
   } catch {
@@ -134,8 +151,5 @@ async function readHistoricalContent(historyFile) {
   }
 }
 
-function deactivate() {
-  // cleanup if needed should never reach.
-}
-
+function deactivate() {}
 module.exports = { activate, deactivate };

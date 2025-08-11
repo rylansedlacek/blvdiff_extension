@@ -11,7 +11,8 @@
   "contributes": {
     "commands": [
       { "command": "blvdiff.explain", "title": "BLVDIFF: Explain error" },
-      { "command": "blvdiff.diff", "title": "BLVDIFF: Show differential comparison" }
+      { "command": "blvdiff.diff", "title": "BLVDIFF: Show differential comparison" },
+      { "command": "blvdiff.setup", "title": "BLVDIFF: Configure API key for LLM." }
     ],
     "configuration": {
       "type": "object",

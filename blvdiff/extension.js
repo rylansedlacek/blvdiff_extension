@@ -34,30 +34,79 @@ function activate(context) {
 
     const filePath = editor.document.fileName;
     const scriptName = path.basename(filePath);
-    const historyPath = await findLatest(scriptName); // call function
+    const historyPath = await findLatest(scriptName);
 
     if (!historyPath) {
       vscode.window.showInformationMessage(`No script history found for ${scriptName}.`);
       return;
     }
 
-    const oldContent = await getHistory(historyPath); // get the content from last file
-    const newContent = editor.document.getText();  // get the current files content
+    // ask for diff choice
+    const choice = await vscode.window.showQuickPick(
+      ['Side-by-side', 'Text-based'],
+      { placeHolder: 'Choose Diff Mode' }
+    );
 
-    const oldTmp = path.join(os.tmpdir(), `${scriptName}.history.old.py`); // grab old
-    const newTmp = path.join(os.tmpdir(), `${scriptName}.current.py`); // grab new
+    if (!choice) {
+      return;
+     } 
 
-    await fsp.writeFile(oldTmp, oldContent, 'utf8'); // stringify
+     // Text ----
+    if (choice.startsWith('Text')) { 
+      const bin = await getBinary(context);
+      runBlvDiff(bin, ['--diff', filePath], output);
+      return;
+    }
+     // Text ----
+
+    // Side By Side -- 
+    const oldContent = await getHistory(historyPath); 
+       const newContent = editor.document.getText();    
+    const oldTmp = path.join(os.tmpdir(), `${scriptName}.history.old.py`);
+    const newTmp = path.join(os.tmpdir(), `${scriptName}.current.py`);
+
+    await fsp.writeFile(oldTmp, oldContent, 'utf8');
     await fsp.writeFile(newTmp, newContent, 'utf8');
 
-    const left = vscode.Uri.file(oldTmp); // old file
-    const right = vscode.Uri.file(newTmp); // new file
+    const left = vscode.Uri.file(oldTmp); 
+    const right = vscode.Uri.file(newTmp); 
 
-    // this is really neat utilizes the VSCODE diff screen instead of the blvdiff text based version
+    // Use VS Code's built in diff library
     await vscode.commands.executeCommand('vscode.diff', left, right, `${scriptName}: Previous Version <-> Current Version`);
   });
+   // Side By Side -- 
 
-  context.subscriptions.push(explainCmd, diffCmd, output);
+
+  // setup for the Meta Llama stuf
+  const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
+    const apiKey = await vscode.window.showInputBox({
+      prompt: 'Enter your API key',
+      ignoreFocusOut: true,
+      password: true // make it secret
+    });
+
+    if (!apiKey) {
+      vscode.window.showInformationMessage('API Setup cancelled.');
+      return;
+    }
+
+    const bin = await getBinary(context);
+    output.clear();
+      output.show(true);
+
+    const proc = spawn(bin, ['setup'], { shell: false });
+    proc.stdout.on('data', d => output.append(d.toString()));
+    proc.stderr.on('data', d => output.append(d.toString()));
+
+    proc.on('error', err => vscode.window.showErrorMessage(`Setup Error: ${err.message}`));
+    proc.on('close', code => output.appendLine(`\nExited with code ${code}`)); // alert good
+
+    // send API key to Rust
+    proc.stdin.write(apiKey + '\n');
+    proc.stdin.end();
+  });
+  context.subscriptions.push(explainCmd, diffCmd, setupCmd, output);
+
 }
 
 // get the binary for each platform
@@ -84,52 +133,54 @@ async function getBinary(context) {
     await fsp.access(candidate, fs.constants.X_OK);
     return candidate;
   } catch (err) {
-    return 'blvflag'; // fallback to PATH file?
+    return 'blvflag'; // fallback path
   }
 }
 
-// run the binary
-function runBlvDiff(bin, args, output) {
 
+// run the Rust Binary
+function runBlvDiff(bin, args, output) {
   output.clear();
   output.show(true);
-  const proc = spawn(bin, args, { shell: false }); // call binary from bin
+  const proc = spawn(bin, args, { shell: false });
 
   proc.stdout.on('data', d => output.append(d.toString()));
   proc.stderr.on('data', d => output.append(d.toString()));
 
-  proc.on('error', err => vscode.window.showErrorMessage(`BLVDIFF error: ${err.message}`)); // error
-  proc.on('close', code => output.appendLine(`\nExited with code ${code}`)); // exit for debug
+  proc.on('error', err => vscode.window.showErrorMessage(`BLVDIFF error: ${err.message}`));
+  proc.on('close', code => output.appendLine(`\nExited with code ${code}`));
 }
 
+
+// find latest from err_history and std_history just like in RUst
 async function findLatest(scriptName) {
-  const baseName = scriptName.replace(/\.py$/, ''); // remove .py 
+  const baseName = scriptName.replace(/\.py$/, '');
+  const baseHistDir = path.join(os.homedir(), 'blvflag', 'tool', 'history');
+  const dirs = ['err_history', 'std_history'];
 
-  // TODO, add support for non error diffing!
-  const histDir = path.join(os.homedir(), 'blvflag', 'tool', 'history', 'err_history');
+  let candidates = [];
 
-  try {
-    const files = await fsp.readdir(histDir);
-    const candidates = files.filter(f => f.startsWith(baseName + '_') && f.endsWith('.json'));
-
-    if (candidates.length === 0) {
-      return null;
+  for (const dir of dirs) {
+    const histDir = path.join(baseHistDir, dir);
+    try {
+      const files = await fsp.readdir(histDir);
+      const matches = files
+        .filter(f => f.startsWith(baseName + '_') && f.endsWith('.json'))
+        .map(f => ({ file: path.join(histDir, f), mtime: fs.statSync(path.join(histDir, f)).mtime }));
+      candidates = candidates.concat(matches);
+    } catch {
     }
+  }
 
-    candidates.sort((a, b) => {
-      const aTime = fs.statSync(path.join(histDir, a)).mtime; // get the newest time first
-      const bTime = fs.statSync(path.join(histDir, b)).mtime;
-      return bTime - aTime;
-    });
-
-    return path.join(histDir, candidates[0]);
-
-  } catch {
+  if (candidates.length === 0) {
     return null;
   }
+
+  candidates.sort((a, b) => b.mtime - a.mtime);
+  return candidates[0].file;
 }
 
-// reads the file
+// reads the file that we get back
 async function getHistory(historyFile) {
   const raw = await fsp.readFile(historyFile, 'utf8');
   try {
@@ -138,11 +189,11 @@ async function getHistory(historyFile) {
     if (typeof obj === 'string') {
       return obj;
     }
-    if (obj.content) { 
+    if (obj.content) {
       return obj.content;
     }
     if (obj.text) {
-      return obj.text;
+       return obj.text;
     }
 
     return raw;

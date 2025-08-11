@@ -73,9 +73,9 @@ function activate(context) {
 
     // Use VS Code's built in diff library
     await vscode.commands.executeCommand('vscode.diff', left, right, `${scriptName}: Previous Version <-> Current Version`);
+    // Side By Side -- 
   });
-   // Side By Side -- 
-
+   
 
   // setup for the Meta Llama stuf
   const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
@@ -106,7 +106,6 @@ function activate(context) {
     proc.stdin.end();
   });
   context.subscriptions.push(explainCmd, diffCmd, setupCmd, output);
-
 }
 
 // get the binary for each platform

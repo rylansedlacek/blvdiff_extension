@@ -9,17 +9,16 @@ const fs = require('fs');
 const fsp = fs.promises;
 
 function activate(context) {
-  const output = vscode.window.createOutputChannel('BLVDIFF'); // extension window
+  const output = vscode.window.createOutputChannel('BLVDIFF'); // extension output channel
 
   // explain flag
   const explainCmd = vscode.commands.registerCommand('blvdiff.explain', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      vscode.window.showInformationMessage('Open a Python script to use the explain flag.');
+      vscode.window.showInformationMessage('Open a Python script or notebook to use the explain flag.');
       return;
     }
-
-    const filePath = editor.document.fileName;
+    const filePath = await getScriptPath(editor.document);
     const bin = await getBinary(context);
     runBlvDiff(bin, ['--explain', filePath], output);
   });
@@ -28,11 +27,10 @@ function activate(context) {
   const diffCmd = vscode.commands.registerCommand('blvdiff.diff', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      vscode.window.showInformationMessage('Open a Python script to use the diff flag.');
+      vscode.window.showInformationMessage('Open a Python script or notebook to use the diff flag.');
       return;
     }
-
-    const filePath = editor.document.fileName;
+    const filePath = await getScriptPath(editor.document);
     const scriptName = path.basename(filePath);
     const historyPath = await findLatest(scriptName);
 
@@ -49,40 +47,36 @@ function activate(context) {
 
     if (!choice) {
       return;
-     } 
+    }
 
-     // Text ----
-    if (choice.startsWith('Text')) { 
+    // Text Diff
+    if (choice.startsWith('Text')) {
       const bin = await getBinary(context);
       runBlvDiff(bin, ['--diff', filePath], output);
       return;
     }
-     // Text ----
 
-    // Side By Side -- 
-    const oldContent = await getHistory(historyPath); 
-       const newContent = editor.document.getText();    
+    // Side By Side diff
+    const oldContent = await getHistory(historyPath);
+    const newContent = editor.document.getText();
     const oldTmp = path.join(os.tmpdir(), `${scriptName}.history.old.py`);
     const newTmp = path.join(os.tmpdir(), `${scriptName}.current.py`);
 
     await fsp.writeFile(oldTmp, oldContent, 'utf8');
     await fsp.writeFile(newTmp, newContent, 'utf8');
 
-    const left = vscode.Uri.file(oldTmp); 
-    const right = vscode.Uri.file(newTmp); 
+    const left = vscode.Uri.file(oldTmp);
+    const right = vscode.Uri.file(newTmp);
 
-    // Use VS Code's built in diff library
     await vscode.commands.executeCommand('vscode.diff', left, right, `${scriptName}: Previous Version <-> Current Version`);
-    // Side By Side -- 
   });
-   
 
-  // setup for the Meta Llama stuf
+  // setup command for API key
   const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
     const apiKey = await vscode.window.showInputBox({
       prompt: 'Enter your API key',
       ignoreFocusOut: true,
-      password: true // make it secret
+      password: true,
     });
 
     if (!apiKey) {
@@ -92,26 +86,39 @@ function activate(context) {
 
     const bin = await getBinary(context);
     output.clear();
-      output.show(true);
+    output.show(true);
 
     const proc = spawn(bin, ['setup'], { shell: false });
     proc.stdout.on('data', d => output.append(d.toString()));
     proc.stderr.on('data', d => output.append(d.toString()));
 
     proc.on('error', err => vscode.window.showErrorMessage(`Setup Error: ${err.message}`));
-    proc.on('close', code => output.appendLine(`\nExited with code ${code}`)); // alert good
+    proc.on('close', code => output.appendLine(`\nExited with code ${code}`));
 
-    // send API key to Rust
     proc.stdin.write(apiKey + '\n');
     proc.stdin.end();
   });
   context.subscriptions.push(explainCmd, diffCmd, setupCmd, output);
 }
 
-// get the binary for each platform
+// save notebooks as py files to work with Rust
+async function getScriptPath(document) {
+  // save cells as python
+  if (document.languageId === 'python' && document.uri.fsPath.endsWith('.ipynb')) { 
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, 'temp.py');
+    const text = document.getText(); // concats
+    await fsp.writeFile(tempFile, text, 'utf8'); // save
+    return tempFile;
+
+  } else {
+    return document.uri.fsPath;
+  }
+}
+
+// get binary path for the current platform
 async function getBinary(context) {
   const configured = vscode.workspace.getConfiguration('blvflag').get('binaryPath');
-
   if (configured && configured.trim()) {
     return configured.trim();
   }
@@ -120,7 +127,7 @@ async function getBinary(context) {
   const arch = process.arch;
 
   let binName;
-  if (platform === 'win32') {
+  if (platform === 'win32') { // TODO windows support
     binName = 'blvflag.exe';
   } else {
     binName = 'blvflag';
@@ -132,12 +139,11 @@ async function getBinary(context) {
     await fsp.access(candidate, fs.constants.X_OK);
     return candidate;
   } catch (err) {
-    return 'blvflag'; // fallback path
+    return 'blvflag'; // fallback to PATH
   }
 }
 
-
-// run the Rust Binary
+// run the blvflag binary with args and show output in the output channel
 function runBlvDiff(bin, args, output) {
   output.clear();
   output.show(true);
@@ -150,8 +156,7 @@ function runBlvDiff(bin, args, output) {
   proc.on('close', code => output.appendLine(`\nExited with code ${code}`));
 }
 
-
-// find latest from err_history and std_history just like in RUst
+// find the latest history file matching the script name in both err_history and std_history
 async function findLatest(scriptName) {
   const baseName = scriptName.replace(/\.py$/, '');
   const baseHistDir = path.join(os.homedir(), 'blvflag', 'tool', 'history');
@@ -168,6 +173,7 @@ async function findLatest(scriptName) {
         .map(f => ({ file: path.join(histDir, f), mtime: fs.statSync(path.join(histDir, f)).mtime }));
       candidates = candidates.concat(matches);
     } catch {
+      // ignore errors if dir doesn't exist
     }
   }
 
@@ -179,12 +185,11 @@ async function findLatest(scriptName) {
   return candidates[0].file;
 }
 
-// reads the file that we get back
+// read the content of a history file (handles JSON structure or raw text)
 async function getHistory(historyFile) {
   const raw = await fsp.readFile(historyFile, 'utf8');
   try {
     const obj = JSON.parse(raw);
-
     if (typeof obj === 'string') {
       return obj;
     }
@@ -192,9 +197,8 @@ async function getHistory(historyFile) {
       return obj.content;
     }
     if (obj.text) {
-       return obj.text;
+      return obj.text;
     }
-
     return raw;
   } catch {
     return raw;

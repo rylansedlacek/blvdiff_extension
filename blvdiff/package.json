@@ -5,7 +5,10 @@
   "engines": { "vscode": "^1.70.0" },
   "activationEvents": [
     "onCommand:blvdiff.explain",
-    "onCommand:blvdiff.diff"
+    "onCommand:blvdiff.diff",
+    "onLanguage:python",
+    "onLanguage:json",          
+    "onNotebook:jupyter-notebook"
   ],
   "main": "./extension.js",
   "contributes": {

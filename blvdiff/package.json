@@ -1,21 +1,41 @@
 {
   "name": "blvdiff-extension",
   "displayName": "BLVDIFF",
+  "description": "Designed to improve debugging processes for blind and low-vision (blv) developers",
   "version": "0.0.1",
-  "engines": { "vscode": "^1.70.0" },
+  "publisher": "TODO PUT PUBLISHER NAME HERE DONT FORGET",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "AI",
+    "Education"
+  ],
+  "icon": "blank.png",
   "activationEvents": [
     "onCommand:blvdiff.explain",
     "onCommand:blvdiff.diff",
+    "onCommand:blvdiff.setup",
     "onLanguage:python",
-    "onLanguage:json",          
+    "onLanguage:json",
     "onNotebook:jupyter-notebook"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "blvdiff.explain", "title": "BLVDIFF: Explain error" },
-      { "command": "blvdiff.diff", "title": "BLVDIFF: Show differential comparison" },
-      { "command": "blvdiff.setup", "title": "BLVDIFF: Configure API key for LLM." }
+      {
+        "command": "blvdiff.explain",
+        "title": "BLVDIFF: Explain error trace back"
+      },
+      {
+        "command": "blvdiff.diff",
+        "title": "BLVDIFF: Show differential comparison of scripts"
+      },
+      {
+        "command": "blvdiff.setup",
+        "title": "BLVDIFF: Configure API key for LLM."
+      }
     ],
     "configuration": {
       "type": "object",
@@ -24,7 +44,7 @@
         "blvflag.binaryPath": {
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "Optional path to the compiled blvflag binary if not on system PATH."
         }
       }
     }
@@ -32,5 +52,9 @@
   "scripts": {
     "vscode:prepublish": "echo 'no build step for JS'",
     "test": "echo 'no tests configured'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rylansedlacek/blvdiff_extension/tree/main"
   }
 }

@@ -73,27 +73,29 @@ function activate(context) {
   }); // diff
 
   // setup command for API key
-  const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
-    const apiKey = await vscode.window.showInputBox({
-      prompt: 'Enter your API key',
-      ignoreFocusOut: true,
-      password: true,
-    });
-
-    if (!apiKey) { vscode.window.showInformationMessage('API Setup cancelled.'); return;}
-
-    const bin = await getBinary(context);
-    output.clear();
-    output.show(true);
-
-    const proc = spawn(bin, ['setup'], { shell: false });
-    proc.stdout.on('data', d => output.append(d.toString()));
-    proc.stderr.on('data', d => output.append(d.toString()));
-    proc.on('error', err => vscode.window.showErrorMessage(`Setup Error: ${err.message}`));
-
-    proc.stdin.write(apiKey + '\n');
-    proc.stdin.end();
+const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
+  const authToken = await vscode.window.showInputBox({
+    prompt: 'Enter your Auth Token',
+    ignoreFocusOut: true,
   });
+
+  if (!authToken) { vscode.window.showInformationMessage('Setup cancelled'); return;}
+
+  const bin = await getBinary(context);
+  output.clear();
+  output.show(true);
+
+  const proc = spawn(bin, ['setup'], { shell: false });
+  proc.stdout.on('data', d => output.append(d.toString()));
+  proc.stderr.on('data', d => output.append(d.toString()));
+  proc.on('error', err => {
+    vscode.window.showErrorMessage(`Setup Error: ${err.message}`);
+  });
+
+  // send auth to rust
+  proc.stdin.write(authToken + '\n');
+  proc.stdin.end();
+});
 
   context.subscriptions.push(explainFlag, diffFlag, setupCmd, output);
 } // end activation events

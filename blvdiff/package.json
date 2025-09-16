@@ -16,6 +16,7 @@
   "activationEvents": [
     "onCommand:blvdiff.explain",
     "onCommand:blvdiff.diff",
+    "onCommand:blvdiff.revert",
     "onCommand:blvdiff.setup",
     "onLanguage:python",
     "onLanguage:json",
@@ -31,6 +32,10 @@
       {
         "command": "blvdiff.diff",
         "title": "BLVDIFF: Show differential comparison of scripts"
+      },
+      {
+        "command": "blvdiff.revert",
+        "title": "BLVDIFF: Revert script back to last saved version."
       },
       {
         "command": "blvdiff.setup",

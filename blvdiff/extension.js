@@ -72,6 +72,19 @@ function activate(context) {
     await vscode.commands.executeCommand('vscode.diff', left, right, `${scriptName}: Previous Version <-> Current Version`);
   }); // diff
 
+  // revert 
+  const revertFlag = vscode.commands.registerCommand('blvdiff.revert', 
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showInformationMessage('Open a Python script of notebook to use the revert flag.');
+        return;
+      }
+      const filePath = await getScriptPath(editor.document);
+      const b = await getBinary(context);
+      runBlvDiff(b, ['--revert', filePath], output);
+    });
+
   // setup command for API key
 const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
   const authToken = await vscode.window.showInputBox({
@@ -97,7 +110,7 @@ const setupCmd = vscode.commands.registerCommand('blvdiff.setup', async () => {
   proc.stdin.end();
 });
 
-  context.subscriptions.push(explainFlag, diffFlag, setupCmd, output);
+  context.subscriptions.push(explainFlag, diffFlag, revertFlag, setupCmd, output);
 } // end activation events
 
 async function getScriptPath(document) {

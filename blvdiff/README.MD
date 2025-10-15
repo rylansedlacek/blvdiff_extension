@@ -11,10 +11,11 @@
 - Rust based shell script.
 - Automatic script versioning.
 
-- <b>Two Flags</b>
+- <b>Three Flags</b>
 
   - <code>--explain</code> flag: feeds error tracebacks into an LLM powered by <a href="https://www.llama.com/">Meta Llama</a>. Outputs an error explanation in a <i>screen-readable</i> format.
   - <code>--diff</code> flag: Utilizes previously saved script versions to generate a <i>screen-readable</i> display of changes made. Similiar functionality to that of vim-diff, but with automatic versioning.
+  - <code>--revert</code> flag: Revert current script version back to most recently saved version. Similiar to that of git's revert feature.
 
 ---------------------------------------------------------------
 <h2>2025</h2>

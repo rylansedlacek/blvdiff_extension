@@ -2,7 +2,7 @@
   "name": "blvdiff-extension",
   "displayName": "BLVDIFF",
   "description": "Designed to improve debugging processes for blind and low-vision (blv) developers",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "blvdiff-extension",
   "engines": {
     "vscode": "^1.70.0"

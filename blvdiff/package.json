@@ -3,7 +3,7 @@
   "displayName": "BLVDIFF",
   "description": "Designed to improve debugging processes for blind and low-vision (blv) developers",
   "version": "0.0.1",
-  "publisher": "TODO PUT PUBLISHER NAME HERE DONT FORGET",
+  "publisher": "blvdiff-extension",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -12,7 +12,7 @@
     "AI",
     "Education"
   ],
-  "icon": "blank.png",
+  "icon": "BLVDIFF-Logo.png",
   "activationEvents": [
     "onCommand:blvdiff.explain",
     "onCommand:blvdiff.diff",
@@ -53,10 +53,6 @@
         }
       }
     }
-  },
-  "scripts": {
-    "vscode:prepublish": "echo 'no build step for JS'",
-    "test": "echo 'no tests configured'"
   },
   "repository": {
     "type": "git",
